@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GitHub + Docker Manager{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-running { background-color: #2d5; color: #000; }
+        .status-stopped { background-color: #888; color: #fff; }
+        .status-error { background-color: #d33; color: #fff; }
+        .status-paused { background-color: #fa3; color: #000; }
+        .container-card {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .action-buttons button {
+            margin: 0;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        .commit-info {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            background-color: var(--pico-code-background-color);
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            margin: 0.5rem 0;
+        }
+        .update-available {
+            color: #fa3;
+            font-weight: 600;
+        }
+        .section-header {
+            border-bottom: 2px solid var(--pico-primary);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        nav {
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 2rem;
+        }
+        .output-box {
+            background-color: var(--pico-code-background-color);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="container">
+        <ul>
+            <li><strong>GitHub + Docker Manager</strong></li>
+        </ul>
+        <ul>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container">
+        <small>GitHub + Docker Manager | <span id="last-update"></span></small>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

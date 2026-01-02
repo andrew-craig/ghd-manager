@@ -4,24 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Web server for webhook handling
+# Web server
 tokio = { version = "1.35", features = ["full"] }
 axum = "0.7"
 tower = "0.4"
-tower-http = { version = "0.5", features = ["trace"] }
+tower-http = { version = "0.5", features = ["trace", "fs"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-# HTTP client for GitHub API
-reqwest = { version = "0.11", features = ["json"] }
-
-# Cryptography for webhook signature validation
-hmac = "0.12"
-sha2 = "0.10"
-hex = "0.4"
-base64 = "0.21"
 
 # Configuration
 config = "0.14"
@@ -34,8 +25,18 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
 thiserror = "1.0"
 
-# Process management
-nix = { version = "0.27", features = ["signal", "process"] }
-
 # Environment variables
 dotenvy = "0.15"
+
+# Docker SDK
+bollard = "0.17"
+
+# Authentication & Sessions
+tower-sessions = "0.13"
+tower-sessions-memory-store = "0.13"
+bcrypt = "0.15"
+chrono = "0.4"
+
+# HTML templating
+askama = { version = "0.12", features = ["with-axum"] }
+askama_axum = "0.4"

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - GitHub + Docker Manager{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<!-- Git Status Section -->
+<section id="git-section">
+    <h2 class="section-header">Git Repository Status</h2>
+
+    <div class="container-card">
+        <div class="grid">
+            <div>
+                <strong>Repository Path:</strong>
+                <div class="commit-info">{{ repo_path }}</div>
+            </div>
+            <div>
+                <strong>Current Branch:</strong>
+                <div class="commit-info">{{ current_branch }}</div>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 1rem;">
+            <div>
+                <strong>Local Commit:</strong>
+                <div class="commit-info">{{ local_commit }}</div>
+            </div>
+            <div>
+                <strong>Remote Commit:</strong>
+                <div class="commit-info">{{ remote_commit }}</div>
+            </div>
+        </div>
+
+        {% if updates_available %}
+        <p class="update-available">⚠ Updates available! Remote is ahead of local.</p>
+        {% else %}
+        <p style="color: #2d5;">✓ Repository is up to date</p>
+        {% endif %}
+
+        <div class="action-buttons" style="margin-top: 1rem;">
+            <button onclick="gitFetch()">Fetch Updates</button>
+            {% if updates_available %}
+            <button onclick="gitPull()">Pull Changes</button>
+            {% else %}
+            <button onclick="gitPull()" disabled>Pull Changes</button>
+            {% endif %}
+        </div>
+
+        <div id="git-output" style="display: none;">
+            <div class="output-box" id="git-output-content"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Docker Containers Section -->
+<section id="docker-section" style="margin-top: 2rem;">
+    <h2 class="section-header">Docker Containers</h2>
+
+    {% for container in containers %}
+    <div class="container-card">
+        <div class="grid">
+            <div>
+                <h3 style="margin: 0;">{{ container.name }}</h3>
+                <small style="color: var(--pico-muted-color);">{{ container.image }}</small>
+            </div>
+            <div style="text-align: right;">
+                <span class="status-badge status-{{ container.status_class }}">
+                    {{ container.status }}
+                </span>
+            </div>
+        </div>
+
+        <div class="action-buttons" style="margin-top: 1rem;">
+            {% if container.status == "Running" %}
+            <button onclick="startContainer('{{ container.name }}')" disabled>Start</button>
+            {% else %}
+            <button onclick="startContainer('{{ container.name }}')">Start</button>
+            {% endif %}
+            {% if container.status == "Running" %}
+            <button onclick="stopContainer('{{ container.name }}')">Stop</button>
+            {% else %}
+            <button onclick="stopContainer('{{ container.name }}')" disabled>Stop</button>
+            {% endif %}
+            {% if container.status == "Running" %}
+            <button onclick="restartContainer('{{ container.name }}')">Restart</button>
+            {% else %}
+            <button onclick="restartContainer('{{ container.name }}')" disabled>Restart</button>
+            {% endif %}
+            <button onclick="rebuildContainer('{{ container.name }}')">Rebuild</button>
+        </div>
+
+        <div id="output-{{ container.name }}" style="display: none;">
+            <div class="output-box" id="output-content-{{ container.name }}"></div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="container-card" style="background-color: rgba(255, 255, 255, 0.05);">
+        <h3>All Containers</h3>
+        <div class="action-buttons">
+            <button onclick="startAllContainers()">Start All</button>
+            <button onclick="stopAllContainers()">Stop All</button>
+            <button onclick="restartAllContainers()">Restart All</button>
+            <button onclick="rebuildAllContainers()" style="background-color: var(--pico-primary);">
+                Rebuild All
+            </button>
+        </div>
+
+        <div id="output-all" style="display: none;">
+            <div class="output-box" id="output-content-all"></div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh status every 10 seconds
+    let autoRefreshInterval;
+
+    function updateLastRefreshTime() {
+        document.getElementById('last-update').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    }
+
+    function refreshStatus() {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update git status
+                document.querySelector('#git-section .commit-info').textContent = data.git.local_commit;
+
+                // Update container statuses
+                data.containers.forEach(container => {
+                    const badge = document.querySelector(`[data-container="${container.name}"] .status-badge`);
+                    if (badge) {
+                        badge.className = `status-badge status-${container.status_class}`;
+                        badge.textContent = container.status;
+                    }
+                });
+
+                updateLastRefreshTime();
+            })
+            .catch(err => console.error('Failed to refresh status:', err));
+    }
+
+    // Start auto-refresh
+    updateLastRefreshTime();
+    autoRefreshInterval = setInterval(refreshStatus, 10000);
+
+    function showOutput(elementId, content, isError = false) {
+        const outputDiv = document.getElementById('output-' + elementId);
+        const contentDiv = document.getElementById('output-content-' + elementId);
+        outputDiv.style.display = 'block';
+        contentDiv.textContent = content;
+        contentDiv.style.color = isError ? '#d33' : 'inherit';
+    }
+
+    async function apiCall(url, method = 'POST') {
+        try {
+            const response = await fetch(url, { method });
+            const data = await response.json();
+            return data;
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    }
+
+    // Git operations
+    async function gitFetch() {
+        showOutput('git', 'Fetching updates from remote...');
+        const data = await apiCall('/api/git/fetch');
+        showOutput('git', data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(() => location.reload(), 2000);
+        }
+    }
+
+    async function gitPull() {
+        showOutput('git', 'Pulling changes from remote...');
+        const data = await apiCall('/api/git/pull');
+        showOutput('git', data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(() => location.reload(), 2000);
+        }
+    }
+
+    // Container operations
+    async function startContainer(name) {
+        showOutput(name, 'Starting container...');
+        const data = await apiCall(`/api/docker/start/${name}`);
+        showOutput(name, data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 2000);
+        }
+    }
+
+    async function stopContainer(name) {
+        showOutput(name, 'Stopping container...');
+        const data = await apiCall(`/api/docker/stop/${name}`);
+        showOutput(name, data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 2000);
+        }
+    }
+
+    async function restartContainer(name) {
+        showOutput(name, 'Restarting container...');
+        const data = await apiCall(`/api/docker/restart/${name}`);
+        showOutput(name, data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 2000);
+        }
+    }
+
+    async function rebuildContainer(name) {
+        if (!confirm(`Rebuild container "${name}"? This will stop the container and rebuild the image.`)) {
+            return;
+        }
+        showOutput(name, 'Rebuilding container... This may take a while.');
+        const data = await apiCall(`/api/docker/rebuild/${name}`);
+        showOutput(name, data.output || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 3000);
+        }
+    }
+
+    // All containers operations
+    async function startAllContainers() {
+        showOutput('all', 'Starting all containers...');
+        const data = await apiCall('/api/docker/start-all');
+        showOutput('all', data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 2000);
+        }
+    }
+
+    async function stopAllContainers() {
+        if (!confirm('Stop all containers?')) return;
+        showOutput('all', 'Stopping all containers...');
+        const data = await apiCall('/api/docker/stop-all');
+        showOutput('all', data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 2000);
+        }
+    }
+
+    async function restartAllContainers() {
+        if (!confirm('Restart all containers?')) return;
+        showOutput('all', 'Restarting all containers...');
+        const data = await apiCall('/api/docker/restart-all');
+        showOutput('all', data.message || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 2000);
+        }
+    }
+
+    async function rebuildAllContainers() {
+        if (!confirm('Rebuild ALL containers? This will run "docker compose down && docker compose up --build -d". This may take several minutes.')) {
+            return;
+        }
+        showOutput('all', 'Rebuilding all containers... This may take several minutes.\n\nRunning: docker compose down...');
+        const data = await apiCall('/api/docker/rebuild-all');
+        showOutput('all', data.output || data.error, !data.success);
+        if (data.success) {
+            setTimeout(refreshStatus, 5000);
+        }
+    }
+</script>
+{% endblock %}
