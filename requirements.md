@@ -1,57 +1,56 @@
-# GitHub Repository Monitor & Auto-Updater
+# GitHub + Docker Manager & Updater
 
 ## Overview
 
-A Rust-based service that automatically monitors a GitHub repository for changes, fetches updated files, manages Python package dependencies using `uv`, and restarts the application to apply updates.
+A Rust-based service that manages projects that are deployed as Docker containers built from Github repositories. The service enables remote triggering of (1) pulling updates from Github, (2) triggering container rebuilds and (3) viewing the status of containers.
 
 ## Core Requirements
 
-### 1. GitHub Webhook Integration
+### 1. Web dashboard 
+A simple web dashboard with
+- **Auth**: password-based authentication. the password can be set in the .env
+- **Github**: 
+  - user can see latest commiy of remote (origin) and the current state of the local (i.e. is an update available)
+  - user can trigger fetch from Github 
+ events
+- **Docker Management**: for a list of Docker containers listed in the .env
+  - see the status of the docker containers managed witn docker compose
+  - stop, start and restart the container
+  - trigger a rebuild of the container
+  - trigger a rebuild of all containers (i.e. docker compose down && docker compose up --build -d)
 
-- **Webhook Listener**: HTTP server that receives GitHub push webhook events
-- **Event Filtering**: Process only push events to monitored repository/branch
-- **Security**: Validate webhook signatures using shared secret
-- **Endpoint**: Expose POST endpoint (e.g., `/webhook`) for GitHub to send events
+### 2. Github Management Backend
 
-### 2. Repository Synchronization
-
-- **Change Detection**: Parse webhook payload to identify modified files
 - **File Fetching**: Pull latest versions of changed files from GitHub repository
 - **Authentication**: Support GitHub personal access tokens or app authentication
 - **Error Handling**: Graceful handling of network failures and invalid responses
+more to be added
 
-### 3. Package Management with uv
+### 3. Docker Management
 
-- **Dependency Detection**: Identify Python package requirements (e.g., from `requirements.txt`, `pyproject.toml`)
-- **Package Upgrade**: Execute `uv` to upgrade existing packages to latest compatible versions
-- **New Package Installation**: Install any newly added dependencies
-- **Virtual Environment**: Manage Python virtual environment for isolated dependencies
-- **Validation**: Verify successful package installation before proceeding
+- start, stop and restart a specific docker container
+- start, stop and restart all containers
+- get the status of each container
+- trigger a rebuild and restart of one or all containers
+- management mechanism tbd
 
-### 4. Application Restart
-
-- **Process Management**: Track and control the monitored application's process
-- **Graceful Shutdown**: Allow current operations to complete before restart
-- **Startup**: Launch application with updated code and dependencies
-- **Health Check**: Verify application starts successfully after restart
-- **Rollback**: (Optional) Revert to previous version if restart fails
 
 ## Technical Specifications
 
 ### Configuration
 
 - Repository URL and branch to monitor
-- GitHub webhook secret for signature validation
-- GitHub API authentication credentials
-- Application start command and working directory
-- Port for webhook server
+- Docker container names
+- password
+- GitHub API authentication credentials?
+- orking directory
+- Port for web server
 
 ### Logging & Monitoring
 
-- Log all webhook events received
+- Log all events received from the FE
 - Track file synchronization operations
-- Record package upgrade activities
-- Monitor application restart status
+- Record Docker management activities
 
 ### Error Handling
 
