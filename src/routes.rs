@@ -126,7 +126,7 @@ async fn handle_login(
     match auth::verify_password(&form.password, &state.password_hash) {
         Ok(true) => {
             // Password correct, create session
-            if let Err(e) = session.insert(SESSION_USER_KEY, "authenticated").await {
+            if let Err(e) = session.insert(SESSION_USER_KEY, true).await {
                 tracing::error!("Failed to create session: {}", e);
                 let template = LoginTemplate {
                     error: Some("Session error. Please try again.".to_string()),

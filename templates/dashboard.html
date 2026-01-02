@@ -72,17 +72,17 @@
         </div>
 
         <div class="action-buttons" style="margin-top: 1rem;">
-            {% if container.status == "Running" %}
+            {% if container.status == "running" %}
             <button onclick="startContainer('{{ container.name }}')" disabled>Start</button>
             {% else %}
             <button onclick="startContainer('{{ container.name }}')">Start</button>
             {% endif %}
-            {% if container.status == "Running" %}
+            {% if container.status == "running" %}
             <button onclick="stopContainer('{{ container.name }}')">Stop</button>
             {% else %}
             <button onclick="stopContainer('{{ container.name }}')" disabled>Stop</button>
             {% endif %}
-            {% if container.status == "Running" %}
+            {% if container.status == "running" %}
             <button onclick="restartContainer('{{ container.name }}')">Restart</button>
             {% else %}
             <button onclick="restartContainer('{{ container.name }}')" disabled>Restart</button>
