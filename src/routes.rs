@@ -188,9 +188,9 @@ async fn show_dashboard(State(state): State<AppState>, session: Session) -> Resp
         .map(|info| {
             let status_str = info.status.to_string();
             let status_class = match status_str.as_str() {
-                "Running" => "running",
-                "Stopped" | "Exited" => "stopped",
-                "Paused" => "paused",
+                "running" => "running",
+                "stopped" | "exited" => "stopped",
+                "paused" => "paused",
                 _ => "error",
             };
             ContainerDisplay {

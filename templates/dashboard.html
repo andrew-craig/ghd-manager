@@ -3,11 +3,10 @@
 {% block title %}Dashboard - GitHub + Docker Manager{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
 
 <!-- Git Status Section -->
 <section id="git-section">
-    <h2 class="section-header">Git Repository Status</h2>
+    <h2 class="section-header">Overview</h2>
 
     <div class="container-card">
         <div class="grid">
@@ -39,11 +38,10 @@
         {% endif %}
 
         <div class="action-buttons" style="margin-top: 1rem;">
-            <button onclick="gitFetch()">Fetch Updates</button>
             {% if updates_available %}
             <button onclick="gitPull()">Pull Changes</button>
             {% else %}
-            <button onclick="gitPull()" disabled>Pull Changes</button>
+            <button onclick="gitFetch()">Check for Updates</button>
             {% endif %}
         </div>
 
@@ -55,40 +53,51 @@
 
 <!-- Docker Containers Section -->
 <section id="docker-section" style="margin-top: 2rem;">
-    <h2 class="section-header">Docker Containers</h2>
+    <h2 class="section-header">Containers</h2>
+
+    <div class="container-card" style="background-color: rgba(255, 255, 255, 0.05);">
+        <div class="grid">
+            <h4>All Containers</h4>
+            <div class="action-buttons">
+                <button onclick="startAllContainers()">Start</button>
+                <button onclick="stopAllContainers()">Stop</button>
+                <button onclick="restartAllContainers()">Restart</button>
+                <button onclick="rebuildAllContainers()" style="background-color: var(--pico-primary);">
+                    Rebuild
+                </button>
+            </div>
+
+            <div id="output-all" style="display: none;">
+                <div class="output-box" id="output-content-all"></div>
+            </div>
+        </div>
+    </div>
+
 
     {% for container in containers %}
     <div class="container-card">
         <div class="grid">
             <div>
-                <h3 style="margin: 0;">{{ container.name }}</h3>
+                <h4 style="margin: 0;">{{ container.name }}</h3>
                 <small style="color: var(--pico-muted-color);">{{ container.image }}</small>
             </div>
-            <div style="text-align: right;">
+            <div style="text-align: center;">
                 <span class="status-badge status-{{ container.status_class }}">
                     {{ container.status }}
                 </span>
             </div>
+            <div class="action-buttons" style="height:0">
+                {% if container.status == "running" %}
+                <button onclick="stopContainer('{{ container.name }}')">Stop</button>
+                <button onclick="restartContainer('{{ container.name }}')">Restart</button>
+                {% else %}
+                <button onclick="startContainer('{{ container.name }}')">Start</button>
+                {% endif %}
+                <button onclick="rebuildContainer('{{ container.name }}')">Rebuild</button>
+            </div>
+
         </div>
 
-        <div class="action-buttons" style="margin-top: 1rem;">
-            {% if container.status == "running" %}
-            <button onclick="startContainer('{{ container.name }}')" disabled>Start</button>
-            {% else %}
-            <button onclick="startContainer('{{ container.name }}')">Start</button>
-            {% endif %}
-            {% if container.status == "running" %}
-            <button onclick="stopContainer('{{ container.name }}')">Stop</button>
-            {% else %}
-            <button onclick="stopContainer('{{ container.name }}')" disabled>Stop</button>
-            {% endif %}
-            {% if container.status == "running" %}
-            <button onclick="restartContainer('{{ container.name }}')">Restart</button>
-            {% else %}
-            <button onclick="restartContainer('{{ container.name }}')" disabled>Restart</button>
-            {% endif %}
-            <button onclick="rebuildContainer('{{ container.name }}')">Rebuild</button>
-        </div>
 
         <div id="output-{{ container.name }}" style="display: none;">
             <div class="output-box" id="output-content-{{ container.name }}"></div>
@@ -96,21 +105,6 @@
     </div>
     {% endfor %}
 
-    <div class="container-card" style="background-color: rgba(255, 255, 255, 0.05);">
-        <h3>All Containers</h3>
-        <div class="action-buttons">
-            <button onclick="startAllContainers()">Start All</button>
-            <button onclick="stopAllContainers()">Stop All</button>
-            <button onclick="restartAllContainers()">Restart All</button>
-            <button onclick="rebuildAllContainers()" style="background-color: var(--pico-primary);">
-                Rebuild All
-            </button>
-        </div>
-
-        <div id="output-all" style="display: none;">
-            <div class="output-box" id="output-content-all"></div>
-        </div>
-    </div>
 </section>
 
 {% endblock %}
