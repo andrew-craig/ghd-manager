@@ -58,9 +58,9 @@ pub struct ContainerInfo {
     pub image: String,
 }
 
-/// Result of a rebuild operation
+/// Result of an update operation
 #[derive(Debug, Clone)]
-pub struct RebuildResult {
+pub struct UpdateResult {
     pub success: bool,
     pub output: String,
     pub error: Option<String>,
@@ -300,56 +300,84 @@ impl DockerManager {
         Ok(())
     }
 
-    /// Rebuilds a single container using docker-compose
-    pub async fn rebuild_container(&self, container_name: &str) -> Result<RebuildResult> {
-        info!("Rebuilding container: {}", container_name);
+    /// Pulls and restarts a single container using docker-compose
+    pub async fn update_container(&self, container_name: &str) -> Result<UpdateResult> {
+        info!("Pulling and restarting container: {}", container_name);
 
         // First, stop the container
         if let Err(e) = self.stop_container(container_name).await {
-            warn!("Failed to stop container before rebuild: {}", e);
+            warn!("Failed to stop container before pull: {}", e);
         }
 
-        // Use docker-compose to rebuild and start the specific service
-        let output = Command::new("docker")
+        // Step 1: Pull the latest image for the specific service
+        let pull_output = Command::new("docker")
+            .arg("compose")
+            .arg("-f")
+            .arg(&self.compose_file_path)
+            .arg("pull")
+            .arg(container_name)
+            .current_dir(&self.compose_dir)
+            .output()
+            .map_err(|e| MonitorError::Docker(format!(
+                "Failed to execute docker compose pull: {}",
+                e
+            )))?;
+
+        let mut combined_output = String::from_utf8_lossy(&pull_output.stdout).to_string();
+        let pull_stderr = String::from_utf8_lossy(&pull_output.stderr).to_string();
+
+        if !pull_output.status.success() {
+            error!("Docker compose pull failed for '{}': {}", container_name, pull_stderr);
+            return Ok(UpdateResult {
+                success: false,
+                output: combined_output,
+                error: Some(pull_stderr),
+            });
+        }
+
+        // Step 2: Start the container with the new image (without building)
+        let up_output = Command::new("docker")
             .arg("compose")
             .arg("-f")
             .arg(&self.compose_file_path)
             .arg("up")
-            .arg("--build")
             .arg("-d")
             .arg(container_name)
             .current_dir(&self.compose_dir)
             .output()
             .map_err(|e| MonitorError::Docker(format!(
-                "Failed to execute docker compose rebuild: {}",
+                "Failed to execute docker compose up: {}",
                 e
             )))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let up_stdout = String::from_utf8_lossy(&up_output.stdout).to_string();
+        let up_stderr = String::from_utf8_lossy(&up_output.stderr).to_string();
 
-        if !output.status.success() {
-            error!("Docker compose rebuild failed for '{}': {}", container_name, stderr);
-            return Ok(RebuildResult {
+        combined_output.push_str("\n");
+        combined_output.push_str(&up_stdout);
+
+        if !up_output.status.success() {
+            error!("Docker compose up failed for '{}': {}", container_name, up_stderr);
+            return Ok(UpdateResult {
                 success: false,
-                output: stdout,
-                error: Some(stderr),
+                output: combined_output,
+                error: Some(up_stderr),
             });
         }
 
-        info!("Successfully rebuilt container: {}", container_name);
-        Ok(RebuildResult {
+        info!("Successfully pulled and restarted container: {}", container_name);
+        Ok(UpdateResult {
             success: true,
-            output: stdout,
+            output: combined_output,
             error: None,
         })
     }
 
-    /// Rebuilds all containers using docker-compose
-    pub async fn rebuild_all_containers(&self) -> Result<RebuildResult> {
-        info!("Rebuilding all containers");
+    /// Pulls and restarts all containers using docker-compose
+    pub async fn update_all_containers(&self) -> Result<UpdateResult> {
+        info!("Pulling and restarting all containers");
 
-        // Execute: docker compose down && docker compose up --build -d
+        // Execute: docker compose down && docker compose pull && docker compose up -d
 
         // Step 1: Down
         let down_output = Command::new("docker")
@@ -367,7 +395,7 @@ impl DockerManager {
         if !down_output.status.success() {
             let stderr = String::from_utf8_lossy(&down_output.stderr).to_string();
             error!("Docker compose down failed: {}", stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
                 output: String::from_utf8_lossy(&down_output.stdout).to_string(),
                 error: Some(stderr),
@@ -376,13 +404,40 @@ impl DockerManager {
 
         debug!("Docker compose down completed");
 
-        // Step 2: Up with build
+        // Step 2: Pull latest images
+        let pull_output = Command::new("docker")
+            .arg("compose")
+            .arg("-f")
+            .arg(&self.compose_file_path)
+            .arg("pull")
+            .current_dir(&self.compose_dir)
+            .output()
+            .map_err(|e| MonitorError::Docker(format!(
+                "Failed to execute docker compose pull: {}",
+                e
+            )))?;
+
+        if !pull_output.status.success() {
+            let stderr = String::from_utf8_lossy(&pull_output.stderr).to_string();
+            error!("Docker compose pull failed: {}", stderr);
+            return Ok(UpdateResult {
+                success: false,
+                output: format!("{}\n{}",
+                    String::from_utf8_lossy(&down_output.stdout),
+                    String::from_utf8_lossy(&pull_output.stdout)
+                ),
+                error: Some(stderr),
+            });
+        }
+
+        debug!("Docker compose pull completed");
+
+        // Step 3: Up without build
         let up_output = Command::new("docker")
             .arg("compose")
             .arg("-f")
             .arg(&self.compose_file_path)
             .arg("up")
-            .arg("--build")
             .arg("-d")
             .current_dir(&self.compose_dir)
             .output()
@@ -396,18 +451,23 @@ impl DockerManager {
 
         if !up_output.status.success() {
             error!("Docker compose up failed: {}", stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
-                output: stdout,
+                output: format!("{}\n{}\n{}",
+                    String::from_utf8_lossy(&down_output.stdout),
+                    String::from_utf8_lossy(&pull_output.stdout),
+                    stdout
+                ),
                 error: Some(stderr),
             });
         }
 
-        info!("Successfully rebuilt all containers");
-        Ok(RebuildResult {
+        info!("Successfully pulled and restarted all containers");
+        Ok(UpdateResult {
             success: true,
-            output: format!("{}\n{}",
+            output: format!("{}\n{}\n{}",
                 String::from_utf8_lossy(&down_output.stdout),
+                String::from_utf8_lossy(&pull_output.stdout),
                 stdout
             ),
             error: None,
