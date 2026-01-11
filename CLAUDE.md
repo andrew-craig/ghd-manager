@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The application enables remote triggering of:
 1. Pulling updates from GitHub
-2. Triggering container rebuilds
+2. Pulling and restarting Docker containers from remote registries
 3. Viewing the status of containers
 
 ## Core Architecture
@@ -30,7 +30,7 @@ The codebase follows a clean modular architecture with clear separation of conce
 
 **Git Management**: Uses git CLI commands (`git fetch`, `git pull`, `git rev-parse`) via `std::process::Command` instead of libgit2. This is simpler to implement, easier to debug, and relies on the well-tested git binary.
 
-**Docker Management**: Hybrid approach using Bollard SDK for individual container operations (start/stop/restart/status) and docker-compose CLI for orchestration (rebuild all). This avoids parsing docker-compose.yml while providing clean Rust APIs.
+**Docker Management**: Hybrid approach using Bollard SDK for individual container operations (start/stop/restart/status) and docker-compose CLI for orchestration (pull and restart). This avoids parsing docker-compose.yml while providing clean Rust APIs. Containers are pulled from remote registries rather than built locally.
 
 **Authentication**: Session-based authentication with bcrypt password hashing. Sessions stored in memory (MemoryStore) with configurable timeout. Rate limiting prevents brute-force attacks.
 
@@ -138,9 +138,9 @@ The `DockerManager` uses a hybrid architecture:
 - Graceful shutdown with 10-second timeout before force kill
 
 **docker-compose CLI**:
-- `rebuild_container(name)` - Rebuild single container
-- `rebuild_all_containers()` - Full rebuild: `docker compose down && docker compose up --build -d`
-- `compose_up()`, `compose_down()` - Orchestration commands
+- `rebuild_container(name)` - Pull and restart single container: `docker compose pull <name> && docker compose up -d <name>`
+- `rebuild_all_containers()` - Pull and restart all: `docker compose down && docker compose pull && docker compose up -d`
+- Images are pulled from remote registries rather than built locally
 
 **Why Hybrid?** This avoids needing to parse docker-compose.yml files while leveraging compose's orchestration logic for dependencies, networks, and volumes.
 
@@ -174,11 +174,11 @@ Sessions are stored in memory (tower-sessions with MemoryStore). For production 
 - `POST /api/docker/start/:name` - Start container
 - `POST /api/docker/stop/:name` - Stop container
 - `POST /api/docker/restart/:name` - Restart container
-- `POST /api/docker/rebuild/:name` - Rebuild single container
+- `POST /api/docker/rebuild/:name` - Pull and restart single container
 - `POST /api/docker/start-all` - Start all containers
 - `POST /api/docker/stop-all` - Stop all containers
 - `POST /api/docker/restart-all` - Restart all containers
-- `POST /api/docker/rebuild-all` - Rebuild all containers
+- `POST /api/docker/rebuild-all` - Pull and restart all containers
 
 ### Templates
 
@@ -315,13 +315,15 @@ RUST_LOG=debug cargo run
 ## Typical Deployment Workflow
 
 1. User opens dashboard and reviews git status
-2. Sees "Updates available" indicator
+2. Sees "Updates available" indicator (if git updates are available)
 3. Clicks "Fetch Updates" to update remote tracking
-4. Clicks "Pull Changes" to merge updates
+4. Clicks "Pull Changes" to merge git updates
 5. Verifies pull was successful in output
-6. Clicks "Rebuild All" to rebuild containers with new code
-7. Monitors rebuild progress in output box
+6. Clicks "Pull & Restart All" to pull latest container images from remote registry
+7. Monitors pull and restart progress in output box
 8. Verifies containers started successfully (status badges turn green)
+
+Note: Containers are pulled from remote registries (e.g., Docker Hub, GitHub Container Registry) rather than built locally. This assumes pre-built images are pushed to a registry as part of your CI/CD pipeline.
 
 ## Project Status
 
