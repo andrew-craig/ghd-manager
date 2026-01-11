@@ -62,8 +62,8 @@
                 <button onclick="startAllContainers()">Start</button>
                 <button onclick="stopAllContainers()">Stop</button>
                 <button onclick="restartAllContainers()">Restart</button>
-                <button onclick="rebuildAllContainers()" style="background-color: var(--pico-primary);">
-                    Pull & Restart
+                <button onclick="updateAllContainers()" style="background-color: var(--pico-primary);">
+                    Update
                 </button>
             </div>
 
@@ -93,7 +93,7 @@
                 {% else %}
                 <button onclick="startContainer('{{ container.name }}')">Start</button>
                 {% endif %}
-                <button onclick="rebuildContainer('{{ container.name }}')">Pull & Restart</button>
+                <button onclick="updateContainer('{{ container.name }}')">Update</button>
             </div>
 
         </div>
@@ -208,12 +208,12 @@
         }
     }
 
-    async function rebuildContainer(name) {
-        if (!confirm(`Pull and restart container "${name}"? This will pull the latest image from the remote registry and restart the container.`)) {
+    async function updateContainer(name) {
+        if (!confirm(`Update container "${name}"? This will pull the latest image from the remote registry and restart the container.`)) {
             return;
         }
-        showOutput(name, 'Pulling latest image and restarting container... This may take a while.');
-        const data = await apiCall(`/api/docker/rebuild/${name}`);
+        showOutput(name, 'Updating container... This may take a while.');
+        const data = await apiCall(`/api/docker/update/${name}`);
         showOutput(name, data.output || data.error, !data.success);
         if (data.success) {
             setTimeout(refreshStatus, 3000);
@@ -250,12 +250,12 @@
         }
     }
 
-    async function rebuildAllContainers() {
-        if (!confirm('Pull and restart ALL containers? This will run "docker compose down && docker compose pull && docker compose up -d". This may take several minutes.')) {
+    async function updateAllContainers() {
+        if (!confirm('Update ALL containers? This will run "docker compose down && docker compose pull && docker compose up -d". This may take several minutes.')) {
             return;
         }
-        showOutput('all', 'Pulling latest images and restarting all containers... This may take several minutes.\n\nRunning: docker compose down...');
-        const data = await apiCall('/api/docker/rebuild-all');
+        showOutput('all', 'Updating all containers... This may take several minutes.\n\nRunning: docker compose down...');
+        const data = await apiCall('/api/docker/update-all');
         showOutput('all', data.output || data.error, !data.success);
         if (data.success) {
             setTimeout(refreshStatus, 5000);

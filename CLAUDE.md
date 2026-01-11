@@ -138,8 +138,8 @@ The `DockerManager` uses a hybrid architecture:
 - Graceful shutdown with 10-second timeout before force kill
 
 **docker-compose CLI**:
-- `rebuild_container(name)` - Pull and restart single container: `docker compose pull <name> && docker compose up -d <name>`
-- `rebuild_all_containers()` - Pull and restart all: `docker compose down && docker compose pull && docker compose up -d`
+- `update_container(name)` - Pull and restart single container: `docker compose pull <name> && docker compose up -d <name>`
+- `update_all_containers()` - Pull and restart all: `docker compose down && docker compose pull && docker compose up -d`
 - Images are pulled from remote registries rather than built locally
 
 **Why Hybrid?** This avoids needing to parse docker-compose.yml files while leveraging compose's orchestration logic for dependencies, networks, and volumes.
@@ -174,11 +174,11 @@ Sessions are stored in memory (tower-sessions with MemoryStore). For production 
 - `POST /api/docker/start/:name` - Start container
 - `POST /api/docker/stop/:name` - Stop container
 - `POST /api/docker/restart/:name` - Restart container
-- `POST /api/docker/rebuild/:name` - Pull and restart single container
+- `POST /api/docker/update/:name` - Update single container (pull and restart)
 - `POST /api/docker/start-all` - Start all containers
 - `POST /api/docker/stop-all` - Stop all containers
 - `POST /api/docker/restart-all` - Restart all containers
-- `POST /api/docker/rebuild-all` - Pull and restart all containers
+- `POST /api/docker/update-all` - Update all containers (pull and restart)
 
 ### Templates
 
@@ -319,8 +319,8 @@ RUST_LOG=debug cargo run
 3. Clicks "Fetch Updates" to update remote tracking
 4. Clicks "Pull Changes" to merge git updates
 5. Verifies pull was successful in output
-6. Clicks "Pull & Restart All" to pull latest container images from remote registry
-7. Monitors pull and restart progress in output box
+6. Clicks "Update" button to pull latest container images from remote registry
+7. Monitors update progress in output box
 8. Verifies containers started successfully (status badges turn green)
 
 Note: Containers are pulled from remote registries (e.g., Docker Hub, GitHub Container Registry) rather than built locally. This assumes pre-built images are pushed to a registry as part of your CI/CD pipeline.

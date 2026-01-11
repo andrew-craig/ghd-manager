@@ -58,9 +58,9 @@ pub struct ContainerInfo {
     pub image: String,
 }
 
-/// Result of a rebuild operation
+/// Result of an update operation
 #[derive(Debug, Clone)]
-pub struct RebuildResult {
+pub struct UpdateResult {
     pub success: bool,
     pub output: String,
     pub error: Option<String>,
@@ -301,7 +301,7 @@ impl DockerManager {
     }
 
     /// Pulls and restarts a single container using docker-compose
-    pub async fn rebuild_container(&self, container_name: &str) -> Result<RebuildResult> {
+    pub async fn update_container(&self, container_name: &str) -> Result<UpdateResult> {
         info!("Pulling and restarting container: {}", container_name);
 
         // First, stop the container
@@ -328,7 +328,7 @@ impl DockerManager {
 
         if !pull_output.status.success() {
             error!("Docker compose pull failed for '{}': {}", container_name, pull_stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
                 output: combined_output,
                 error: Some(pull_stderr),
@@ -358,7 +358,7 @@ impl DockerManager {
 
         if !up_output.status.success() {
             error!("Docker compose up failed for '{}': {}", container_name, up_stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
                 output: combined_output,
                 error: Some(up_stderr),
@@ -366,7 +366,7 @@ impl DockerManager {
         }
 
         info!("Successfully pulled and restarted container: {}", container_name);
-        Ok(RebuildResult {
+        Ok(UpdateResult {
             success: true,
             output: combined_output,
             error: None,
@@ -374,7 +374,7 @@ impl DockerManager {
     }
 
     /// Pulls and restarts all containers using docker-compose
-    pub async fn rebuild_all_containers(&self) -> Result<RebuildResult> {
+    pub async fn update_all_containers(&self) -> Result<UpdateResult> {
         info!("Pulling and restarting all containers");
 
         // Execute: docker compose down && docker compose pull && docker compose up -d
@@ -395,7 +395,7 @@ impl DockerManager {
         if !down_output.status.success() {
             let stderr = String::from_utf8_lossy(&down_output.stderr).to_string();
             error!("Docker compose down failed: {}", stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
                 output: String::from_utf8_lossy(&down_output.stdout).to_string(),
                 error: Some(stderr),
@@ -420,7 +420,7 @@ impl DockerManager {
         if !pull_output.status.success() {
             let stderr = String::from_utf8_lossy(&pull_output.stderr).to_string();
             error!("Docker compose pull failed: {}", stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
                 output: format!("{}\n{}",
                     String::from_utf8_lossy(&down_output.stdout),
@@ -451,7 +451,7 @@ impl DockerManager {
 
         if !up_output.status.success() {
             error!("Docker compose up failed: {}", stderr);
-            return Ok(RebuildResult {
+            return Ok(UpdateResult {
                 success: false,
                 output: format!("{}\n{}\n{}",
                     String::from_utf8_lossy(&down_output.stdout),
@@ -463,7 +463,7 @@ impl DockerManager {
         }
 
         info!("Successfully pulled and restarted all containers");
-        Ok(RebuildResult {
+        Ok(UpdateResult {
             success: true,
             output: format!("{}\n{}\n{}",
                 String::from_utf8_lossy(&down_output.stdout),
