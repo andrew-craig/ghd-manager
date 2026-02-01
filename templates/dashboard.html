@@ -62,7 +62,7 @@
                 <button onclick="startAllContainers()">Start</button>
                 <button onclick="stopAllContainers()">Stop</button>
                 <button onclick="restartAllContainers()">Restart</button>
-                <button onclick="rebuildAllContainers()" style="background-color: var(--pico-primary);">
+                <button onclick="updateAllContainers()" style="background-color: var(--pico-primary);">
                     Update All
                 </button>
             </div>
@@ -93,7 +93,7 @@
                 {% else %}
                 <button onclick="startContainer('{{ container.name }}')">Start</button>
                 {% endif %}
-                <button onclick="rebuildContainer('{{ container.name }}')">Update</button>
+                <button onclick="updateContainer('{{ container.name }}')">Update</button>
             </div>
 
         </div>
@@ -208,12 +208,12 @@
         }
     }
 
-    async function rebuildContainer(name) {
+    async function updateContainer(name) {
         if (!confirm(`Pull latest image for "${name}" and restart? This will check for updates from the registry.`)) {
             return;
         }
         showOutput(name, 'Pulling latest image and restarting container...');
-        const data = await apiCall(`/api/docker/rebuild/${name}`);
+        const data = await apiCall(`/api/docker/update/${name}`);
         showOutput(name, data.output || data.error, !data.success);
         if (data.success) {
             setTimeout(refreshStatus, 3000);
@@ -250,12 +250,12 @@
         }
     }
 
-    async function rebuildAllContainers() {
+    async function updateAllContainers() {
         if (!confirm('Pull latest images for ALL containers and restart them? This may take a few minutes.')) {
             return;
         }
         showOutput('all', 'Pulling latest images for all containers...');
-        const data = await apiCall('/api/docker/rebuild-all');
+        const data = await apiCall('/api/docker/update-all');
         showOutput('all', data.output || data.error, !data.success);
         if (data.success) {
             setTimeout(refreshStatus, 5000);

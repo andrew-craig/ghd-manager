@@ -99,11 +99,11 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/docker/start/:name", post(api_docker_start))
         .route("/api/docker/stop/:name", post(api_docker_stop))
         .route("/api/docker/restart/:name", post(api_docker_restart))
-        .route("/api/docker/rebuild/:name", post(api_docker_rebuild))
+        .route("/api/docker/update/:name", post(api_docker_update))
         .route("/api/docker/start-all", post(api_docker_start_all))
         .route("/api/docker/stop-all", post(api_docker_stop_all))
         .route("/api/docker/restart-all", post(api_docker_restart_all))
-        .route("/api/docker/rebuild-all", post(api_docker_rebuild_all))
+        .route("/api/docker/update-all", post(api_docker_update_all))
         .with_state(state)
 }
 
@@ -433,7 +433,7 @@ async fn api_docker_restart(
     }
 }
 
-async fn api_docker_rebuild(
+async fn api_docker_update(
     State(state): State<AppState>,
     session: Session,
     axum::extract::Path(name): axum::extract::Path<String>,
@@ -447,7 +447,7 @@ async fn api_docker_rebuild(
         });
     }
 
-    match state.docker.rebuild_container(&name).await {
+    match state.docker.update_container(&name).await {
         Ok(result) => Json(ApiResponse {
             success: result.success,
             message: if result.success {
@@ -554,7 +554,7 @@ async fn api_docker_restart_all(
     }
 }
 
-async fn api_docker_rebuild_all(
+async fn api_docker_update_all(
     State(state): State<AppState>,
     session: Session,
 ) -> Json<ApiResponse> {
@@ -567,7 +567,7 @@ async fn api_docker_rebuild_all(
         });
     }
 
-    match state.docker.rebuild_all_containers().await {
+    match state.docker.update_all_containers().await {
         Ok(result) => Json(ApiResponse {
             success: result.success,
             message: if result.success {

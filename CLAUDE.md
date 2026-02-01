@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The application enables remote triggering of:
 1. Pulling updates from GitHub
-2. Pulling container image updates
+2. Pulling and restarting Docker containers from remote registries
 3. Viewing the status of containers
 
 ## Core Architecture
@@ -30,7 +30,7 @@ The codebase follows a clean modular architecture with clear separation of conce
 
 **Git Management**: Uses git CLI commands (`git fetch`, `git pull`, `git rev-parse`) via `std::process::Command` instead of libgit2. This is simpler to implement, easier to debug, and relies on the well-tested git binary.
 
-**Docker Management**: Hybrid approach using Bollard SDK for individual container operations (start/stop/restart/status) and docker-compose CLI for image pulling and orchestration. Uses `docker compose pull` to fetch latest images from registry, then restarts containers. This avoids parsing docker-compose.yml while providing clean Rust APIs.
+**Docker Management**: Hybrid approach using Bollard SDK for individual container operations (start/stop/restart/status) and docker-compose CLI for orchestration (pull and restart). This avoids parsing docker-compose.yml while providing clean Rust APIs. Containers are pulled from remote registries rather than built locally.
 
 **Authentication**: Session-based authentication with bcrypt password hashing. Sessions stored in memory (MemoryStore) with configurable timeout. Rate limiting prevents brute-force attacks.
 
@@ -138,11 +138,11 @@ The `DockerManager` uses a hybrid architecture:
 - Graceful shutdown with 10-second timeout before force kill
 
 **docker-compose CLI**:
-- `rebuild_container(name)` - Pull latest image and restart single container: `docker compose pull <name> && docker compose up -d <name>`
-- `rebuild_all_containers()` - Pull all images and restart: `docker compose pull && docker compose up -d`
-- `compose_up()`, `compose_down()` - Orchestration commands
+- `update_container(name)` - Pull and restart single container: `docker compose pull <name> && docker compose up -d <name>`
+- `update_all_containers()` - Pull and restart all: `docker compose down && docker compose pull && docker compose up -d`
+- Images are pulled from remote registries rather than built locally
 
-**Why Hybrid?** This avoids needing to parse docker-compose.yml files while leveraging compose's orchestration logic for dependencies, networks, and volumes. The pull-based approach fetches pre-built images from container registries instead of rebuilding from source.
+**Why Hybrid?** This avoids needing to parse docker-compose.yml files while leveraging compose's orchestration logic for dependencies, networks, and volumes.
 
 See [requirements.md:465-797](requirements.md#L465-L797) for complete Docker Manager documentation.
 
@@ -174,11 +174,11 @@ Sessions are stored in memory (tower-sessions with MemoryStore). For production 
 - `POST /api/docker/start/:name` - Start container
 - `POST /api/docker/stop/:name` - Stop container
 - `POST /api/docker/restart/:name` - Restart container
-- `POST /api/docker/rebuild/:name` - Pull latest image and restart container
+- `POST /api/docker/update/:name` - Update single container (pull and restart)
 - `POST /api/docker/start-all` - Start all containers
 - `POST /api/docker/stop-all` - Stop all containers
 - `POST /api/docker/restart-all` - Restart all containers
-- `POST /api/docker/rebuild-all` - Pull all images and restart containers
+- `POST /api/docker/update-all` - Update all containers (pull and restart)
 
 ### Templates
 
@@ -315,13 +315,15 @@ RUST_LOG=debug cargo run
 ## Typical Deployment Workflow
 
 1. User opens dashboard and reviews git status
-2. Sees "Updates available" indicator
+2. Sees "Updates available" indicator (if git updates are available)
 3. Clicks "Fetch Updates" to update remote tracking
-4. Clicks "Pull Changes" to merge updates
+4. Clicks "Pull Changes" to merge git updates
 5. Verifies pull was successful in output
-6. Clicks "Update All" to pull latest images from registry
-7. Monitors pull progress in output box
-8. Verifies containers restarted with new images (status badges turn green)
+6. Clicks "Update" button to pull latest container images from remote registry
+7. Monitors update progress in output box
+8. Verifies containers started successfully (status badges turn green)
+
+Note: Containers are pulled from remote registries (e.g., Docker Hub, GitHub Container Registry) rather than built locally. This assumes pre-built images are pushed to a registry as part of your CI/CD pipeline.
 
 ## Project Status
 
