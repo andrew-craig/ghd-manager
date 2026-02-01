@@ -451,7 +451,7 @@ async fn api_docker_rebuild(
         Ok(result) => Json(ApiResponse {
             success: result.success,
             message: if result.success {
-                Some(format!("Successfully rebuilt container '{}'", name))
+                Some(format!("Successfully updated container '{}'", name))
             } else {
                 None
             },
@@ -460,7 +460,7 @@ async fn api_docker_rebuild(
         }),
         Err(e) => Json(ApiResponse {
             success: false,
-            error: Some(format!("Failed to rebuild container: {}", e)),
+            error: Some(format!("Failed to update container: {}", e)),
             message: None,
             output: None,
         }),
@@ -571,7 +571,7 @@ async fn api_docker_rebuild_all(
         Ok(result) => Json(ApiResponse {
             success: result.success,
             message: if result.success {
-                Some("Successfully rebuilt all containers".to_string())
+                Some("Successfully updated all containers".to_string())
             } else {
                 None
             },
@@ -580,7 +580,7 @@ async fn api_docker_rebuild_all(
         }),
         Err(e) => Json(ApiResponse {
             success: false,
-            error: Some(format!("Failed to rebuild all containers: {}", e)),
+            error: Some(format!("Failed to update all containers: {}", e)),
             message: None,
             output: None,
         }),
